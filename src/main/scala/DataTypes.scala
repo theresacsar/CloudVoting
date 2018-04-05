@@ -1,75 +1,52 @@
-package cloudvoting.utils
+/**
+  * Created by theresa csar on 08.09.2017.
+  */
+
+package DataTypes
 
 import org.apache.spark.graphx._
 import org.apache.spark.rdd.RDD
 
-
-package object datatypes {
-  type WeightedGraph = Graph[String,Long]
+object GraphDataTypes {
+  type PairwiseWeightedGraph = Graph[String,Long]
   type WeakDominanceGraph = Graph[String,Long]
   type StrictDominanceGraph = Graph[String,Long]
-  type ScoredWeightedGraph = Graph[(String,Long), Long]
+  type ScoredPairwiseWeightedGraph = Graph[(String,Long), Long]
   type ScoredWeakDominanceGraph = Graph[(String,Long),Long]
   type ScoredStrictDominanceGraph = Graph[(String,Long),Long]
   type ScoredGraph = Graph[(String,Long),Long]
   type ScoredVertices = VertexRDD[(String,Long)]
+  type SchwartzVertex = (Long,Long, String, Long, Boolean)
+  type SchwartzMaxVertex = (Long, Long, Long, Long, String, Long, Boolean)
+  type SchwartzSet = VertexRDD[SchwartzVertex]
 
 
-  /**
-    * Removing all edges with a weight equal to 0
-    *
-    * @param WeakGraph
-    * @return StrictDominanceGraph
-    */
+  /* The weak dominance graph has to have weights */
   implicit def toStrict(WeakGraph: WeakDominanceGraph): StrictDominanceGraph = {
     Graph(vertices = WeakGraph.vertices, edges = WeakGraph.edges.filter(edge => edge.attr > 0))
   }
 
-  /**
-    * Removing all edges with a weight equal to 0
-    *
-    * @param WeakGraph
-    * @return
-    */
   implicit def toStrictScored(WeakGraph: ScoredWeakDominanceGraph): ScoredStrictDominanceGraph = {
     Graph(vertices = WeakGraph.vertices, edges = WeakGraph.edges.filter(edge => edge.attr > 0))
   }
 
-  /**
-    * Convert a WeightedGraph to a WeakDominanceGraph
-    *
-    * @param pwg
-    * @return
-    */
-  implicit def toWeak(pwg: WeightedGraph): StrictDominanceGraph = {
+  implicit def toWeak(pwg: PairwiseWeightedGraph): WeakDominanceGraph = {
     var revedges = pwg.reverse.mapEdges(edge => (-1) * edge.attr).edges
     /* create graph with old and reverse (negative) edges. Calculate the sum of the edges between each (src, dst) edge and only keep edges with a positive value --> dominance graph with weights) */
     Graph(vertices = pwg.vertices, edges = Graph(pwg.vertices, pwg.edges.union(revedges)).groupEdges((i, j) => i + j).edges.filter(e => e.attr >= 0))
   }
 
-
-  /**
-    * Convert a ScoredWeightedGraph to a ScoredWeakDominanceGraph
-    *
-    * @param pwg
-    * @return
-    */
-  implicit def toWeakScored(pwg: ScoredWeightedGraph): ScoredWeakDominanceGraph = {
+  implicit def toWeakScored(pwg: ScoredPairwiseWeightedGraph): ScoredWeakDominanceGraph = {
     var revedges = pwg.reverse.mapEdges(edge => (-1) * edge.attr).edges
-    /* create graph with old and reverse (negative) edges.
-    Calculate the sum of the edges between each (src, dst) edge
-    and only keep edges with a positive value --> dominance graph with weights) */
+    /* create graph with old and reverse (negative) edges. Calculate the sum of the edges between each (src, dst) edge and only keep edges with a positive value --> dominance graph with weights) */
     Graph(vertices = pwg.vertices, edges = Graph(pwg.vertices, pwg.edges.union(revedges)).groupEdges((i, j) => i + j).edges.filter(e => e.attr >= 0))
   }
 
-  /**
-    * Remove the scores from a ScoredWeightedGraph and return a WeightedGraph
-    * @param spwg
-    * @return
-    */
-  implicit def removeScores(spwg: ScoredWeightedGraph): WeightedGraph = {
+  implicit def removeScores(spwg: ScoredPairwiseWeightedGraph): PairwiseWeightedGraph = {
     val vertices: RDD[(VertexId, String)] = spwg.vertices.map(vertex => (vertex._1, vertex._2._1))
     Graph(vertices = vertices,edges = spwg.edges)
   }
 
+
 }
+
